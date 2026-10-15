@@ -5,7 +5,8 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
--- 15-10-2026 : LABDET_NET_OT_HOURS = LABDET_OT_HOURS x 1.5 when the Sunday / LAB_HOLIDAY tick applies, else x 1.25
+-- 15-10-2026 : LABDET_NET_OT_HOURS = LABDET_OT_HOURS x 1.5 when LAB_EFF_FROM is a Sunday or LAB_HOLIDAY is ticked, else x 1.25;
+--              LABDET_NET_HOURS = LABDET_NORMAL_HOURS + LABDET_OT_HOURS
 ALTER PROCEDURE [dbo].[usp_DTS_GridValidate]
 	@strXmlRowDetails       nvarchar(max),
     @strCurrentCellName     nvarchar(100),
@@ -26,18 +27,21 @@ as
 				@NormalHrs			numeric(18,3),
 				@lunchhours			numeric(18,3),
 				@strHolidayTick		NVARCHAR(20),
+				@dtEffFrom			DATETIME,
 				@nOtFactor			NUMERIC(18,3)
 
 	 EXEC sp_xml_preparedocument @idoc output , @strXmlRowDetails  
 
-	 -- Holiday tick from the header form (LAB_HOLIDAY)
+	 -- Holiday tick (LAB_HOLIDAY) and date (LAB_EFF_FROM) from the header form
 	 IF @strXmlHeaderFormParam IS NOT NULL
 	 BEGIN
 		EXEC sp_xml_preparedocument @idoc2 output , @strXmlHeaderFormParam
 
-		SELECT	@strHolidayTick	=	LAB_HOLIDAY
+		SELECT	@strHolidayTick	=	LAB_HOLIDAY,
+				@dtEffFrom		=	LAB_EFF_FROM
 		FROM	OPENXML(@idoc2, 'FACTS/PARAMETERS',2)
-		WITH	( LAB_HOLIDAY NVARCHAR(20) )
+		WITH	(	LAB_HOLIDAY		NVARCHAR(20),
+					LAB_EFF_FROM	DATETIME )
 
 		EXEC sp_xml_removedocument @idoc2
 	 END
@@ -155,13 +159,15 @@ as
 	--UPDATE @tbl_CurrenctRow  		
 	--SET   labdet_ot_hours				=	  ((DATEDIFF(HOUR,labdet_in_time,labdet_out_time) - isnull(labdet_deduction_hours,0) - labdet_normal_hours + isnull(labdet_inc_hours,0)))
 
-	-- Net OT hours: Sunday or Holiday tick -> OT x 1.5, otherwise OT x 1.25
+	-- Net hours = Normal + OT
+	-- Net OT hours: Sunday (LAB_EFF_FROM) or Holiday tick -> OT x 1.5, otherwise OT x 1.25
 	-- (1900-01-07 was a Sunday, so this does not depend on DATEFIRST / language settings)
 	UPDATE @tbl_CurrenctRow  
-	SET   labdet_net_ot_hours			=	ISNULL(labdet_ot_hours,0) *
+	SET   labdet_net_hours				=	ISNULL(labdet_normal_hours,0) + ISNULL(labdet_ot_hours,0),
+		  labdet_net_ot_hours			=	ISNULL(labdet_ot_hours,0) *
 										CASE	WHEN ISNULL(@strHolidayTick,'0') IN ('1','TRUE','Y','YES')
-												OR	( labdet_work_date IS NOT NULL
-													  AND DATEDIFF(DAY,'19000107',CAST(labdet_work_date AS DATE)) % 7 = 0 )
+												OR	( @dtEffFrom IS NOT NULL
+													  AND DATEDIFF(DAY,'19000107',CAST(@dtEffFrom AS DATE)) % 7 = 0 )
 												THEN 1.5
 												ELSE 1.25
 										END
