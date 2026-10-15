@@ -134,7 +134,7 @@ BEGIN
 							WHEN GRN.grn_qty < purdet_qty			THEN ''Partially Received''
 							ELSE ''GRN Completed''
 					END												AS grn_status
-			FROM	purchase_details	WITH(NOLOCK)
+			FROM	purchase_details	PD WITH(NOLOCK)
 			INNER JOIN 	purchase_header	WITH(NOLOCK)	ON
 					purdet_fycode	=	pur_fycode		AND
 					purdet_doctype	=	pur_doctype		AND
@@ -152,12 +152,12 @@ BEGIN
 									gh.pur_fycode	= g.purdet_fycode	AND
 									gh.pur_doctype	= g.purdet_doctype	AND
 									gh.pur_docno	= g.purdet_docno
-							WHERE	gh.pur_doctype				= ''GRN''
+							WHERE	gh.pur_doctype				LIKE ''GRN%''
 							AND		gh.pur_revised_docno IS NULL
-							AND		g.purdet_previous_fycode	= purdet_fycode
-							AND		g.purdet_previous_doctype	= purdet_doctype
-							AND		g.purdet_previous_docno		= purdet_docno
-							AND		g.purdet_previous_docsrno	= purdet_srno ) GRN
+							AND		g.purdet_previous_fycode	= PD.purdet_fycode
+							AND		g.purdet_previous_doctype	= PD.purdet_doctype
+							AND		g.purdet_previous_docno		= PD.purdet_docno
+							AND		g.purdet_previous_docsrno	= PD.purdet_docsrno ) GRN
 			
 			WHERE   pur_fycode	=	'''	+	@strFyCode	+	'''		AND
 					pur_doctype =	''' +	@strDocType +	'''		AND

@@ -106,7 +106,7 @@ BEGIN
 							WHEN GRN.grn_qty < ISNULL(PO.po_qty,0)	THEN ''Partially Received''
 							ELSE ''GRN Completed''
 					END												AS grn_status
-			FROM	purchase_header	WITH(NOLOCK)	
+			FROM	purchase_header	PH WITH(NOLOCK)	
 			INNER JOIN document_master	ON
 					dm_docno	=	pur_docType
 			INNER JOIN currency_master	ON
@@ -118,20 +118,20 @@ BEGIN
 					doc_status_docno = pur_document_status_docno
 			OUTER APPLY (	SELECT	SUM(d.purdet_qty) AS po_qty
 							FROM	purchase_details d WITH(NOLOCK)
-							WHERE	d.purdet_fycode		= pur_fycode
-							AND		d.purdet_doctype	= pur_doctype
-							AND		d.purdet_docno		= pur_docno ) PO
+							WHERE	d.purdet_fycode		= PH.pur_fycode
+							AND		d.purdet_doctype	= PH.pur_doctype
+							AND		d.purdet_docno		= PH.pur_docno ) PO
 			OUTER APPLY (	SELECT	SUM(g.purdet_qty) AS grn_qty
 							FROM	purchase_details g WITH(NOLOCK)
 							INNER JOIN purchase_header gh WITH(NOLOCK) ON
 									gh.pur_fycode	= g.purdet_fycode	AND
 									gh.pur_doctype	= g.purdet_doctype	AND
 									gh.pur_docno	= g.purdet_docno
-							WHERE	gh.pur_doctype				= ''GRN''
+							WHERE	gh.pur_doctype				LIKE ''GRN%''
 							AND		gh.pur_revised_docno IS NULL
-							AND		g.purdet_previous_fycode	= pur_fycode
-							AND		g.purdet_previous_doctype	= pur_doctype
-							AND		g.purdet_previous_docno		= pur_docno ) GRN
+							AND		g.purdet_previous_fycode	= PH.pur_fycode
+							AND		g.purdet_previous_doctype	= PH.pur_doctype
+							AND		g.purdet_previous_docno		= PH.pur_docno ) GRN
 			WHERE   pur_revised_docno IS NULL						AND
 					pur_fycode		=	'''	+	@strFyCode	+ '''	AND
 					pur_doctype		=	''' +	@strDocType + '''	AND
