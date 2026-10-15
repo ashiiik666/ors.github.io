@@ -129,7 +129,7 @@ BEGIN
 					purdet_after_doc_qty2,
 					purdet_expiry_date,
 					ISNULL(GRN.grn_qty,0)							AS grn_received_qty,
-					purdet_qty - ISNULL(GRN.grn_qty,0)				AS grn_pending_qty,
+					CASE WHEN purdet_qty > ISNULL(GRN.grn_qty,0) THEN purdet_qty - ISNULL(GRN.grn_qty,0) ELSE 0 END	AS pending_qty,
 					CASE	WHEN ISNULL(GRN.grn_qty,0) = 0			THEN ''Pending for GRN''
 							WHEN GRN.grn_qty < purdet_qty			THEN ''Partially Received''
 							ELSE ''GRN Completed''

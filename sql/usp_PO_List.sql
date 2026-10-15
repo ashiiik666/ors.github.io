@@ -101,7 +101,7 @@ BEGIN
 					acmst_desc,
 					ISNULL(PO.po_qty,0)								AS po_ordered_qty,
 					ISNULL(GRN.grn_qty,0)							AS grn_received_qty,
-					ISNULL(PO.po_qty,0) - ISNULL(GRN.grn_qty,0)		AS grn_pending_qty,
+					CASE WHEN ISNULL(PO.po_qty,0) > ISNULL(GRN.grn_qty,0) THEN ISNULL(PO.po_qty,0) - ISNULL(GRN.grn_qty,0) ELSE 0 END	AS pending_qty,
 					CASE	WHEN ISNULL(GRN.grn_qty,0) = 0			THEN ''Pending for GRN''
 							WHEN GRN.grn_qty < ISNULL(PO.po_qty,0)	THEN ''Partially Received''
 							ELSE ''GRN Completed''
